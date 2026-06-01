@@ -18,6 +18,13 @@ __pycache__/
 *.sqlite3
 auctionedge.db
 
+# Uploaded / seeded media images (downloaded at seed time)
+backend/media/images/*.jpg
+backend/media/images/*.jpeg
+backend/media/images/*.png
+backend/media/images/*.webp
+backend/media/images/*.gif
+
 # OS generated files
 .DS_Store
 Thumbs.db

@@ -1,54 +1,50 @@
 import React, { useState, useEffect } from 'react';
 
-const CountdownTimer = ({ endTime, onExpire }) => {
-  const calculateTimeLeft = () => {
-    if (!endTime) return 0;
-    // Replace space with T to ensure valid ISO 8601 for Safari/cross-browser
-    const parsedEnd = new Date(endTime.replace(' ', 'T')).getTime();
-    const now = new Date().getTime();
-    const difference = parsedEnd - now;
-    return difference > 0 ? Math.floor(difference / 1000) : 0;
+const CountdownTimer = ({ endTime, isActive = true, onExpire, showBlocks = false }) => {
+  const calc = () => {
+    if (!endTime || !isActive) return 0;
+    const d = new Date(endTime.replace(' ', 'T')) - new Date();
+    return d > 0 ? Math.floor(d / 1000) : 0;
   };
 
-  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+  const [secs, setSecs] = useState(calc);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      const newTime = calculateTimeLeft();
-      setTimeLeft(newTime);
-      
-      if (newTime <= 0) {
-        clearInterval(timer);
-        if (onExpire) onExpire();
-      }
+    setSecs(calc());
+    if (!endTime || !isActive) return;
+    const t = setInterval(() => {
+      setSecs(p => {
+        if (p <= 1) { clearInterval(t); if (onExpire) onExpire(); return 0; }
+        return p - 1;
+      });
     }, 1000);
+    return () => clearInterval(t);
+  }, [endTime, isActive]);
 
-    return () => clearInterval(timer);
-  }, [endTime, onExpire]);
-
-  if (timeLeft <= 0) {
-    return <span style={{ color: 'var(--text-muted)' }}>Ended</span>;
+  if (!isActive || secs <= 0) {
+    if (showBlocks) return <span className="countdown cd-ended">Auction closed</span>;
+    return <span className="countdown cd-ended">Ended</span>;
   }
 
-  const days = Math.floor(timeLeft / (3600 * 24));
-  const hours = Math.floor((timeLeft % (3600 * 24)) / 3600);
-  const minutes = Math.floor((timeLeft % 3600) / 60);
-  const seconds = timeLeft % 60;
+  const d = Math.floor(secs / 86400);
+  const h = Math.floor((secs % 86400) / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  const cls = secs < 3600 ? 'cd-urgent' : secs < 86400 ? 'cd-warning' : 'cd-normal';
 
-  let color = 'var(--success)';
-  if (days < 1 && hours < 24) color = 'var(--warning)';
-  if (days === 0 && hours < 1) color = 'var(--danger)';
+  if (showBlocks) {
+    return (
+      <div className="cd-blocks">
+        {d > 0 && <div className={`cd-block ${cls}`}><span className="cd-val">{String(d).padStart(2,'0')}</span><span className="cd-lbl">Days</span></div>}
+        <div className={`cd-block ${cls}`}><span className="cd-val">{String(h).padStart(2,'0')}</span><span className="cd-lbl">Hours</span></div>
+        <div className={`cd-block ${cls}`}><span className="cd-val">{String(m).padStart(2,'0')}</span><span className="cd-lbl">Min</span></div>
+        <div className={`cd-block ${cls}`}><span className="cd-val">{String(s).padStart(2,'0')}</span><span className="cd-lbl">Sec</span></div>
+      </div>
+    );
+  }
 
-  let display = "";
-  if (days > 0) display += `${days}d `;
-  display += `${hours}h ${minutes}m`;
-  if (days === 0 && hours < 1) display += ` ${seconds}s`;
-
-  return (
-    <span style={{ color, fontWeight: 'bold' }}>
-      {display}
-    </span>
-  );
+  const label = d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m ${String(s).padStart(2,'0')}s`;
+  return <span className={`countdown ${cls}`}>{label}</span>;
 };
 
 export default CountdownTimer;

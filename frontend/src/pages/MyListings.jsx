@@ -1,123 +1,115 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { get, del, post } from '../api';
-import { AuthContext } from '../context/AuthContext';
 import { ToastContext } from '../context/ToastContext';
 import ListingCard from '../components/ListingCard';
 import Spinner from '../components/Spinner';
 
 const MyListings = () => {
-  const { user } = useContext(AuthContext);
   const { showToast } = useContext(ToastContext);
-  
-  const [activeTab, setActiveTab] = useState('my-listings');
-  const [listings, setListings] = useState([]);
+  const [tab, setTab] = useState('my');
+  const [myListings, setMyListings] = useState([]);
   const [wonListings, setWonListings] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Very naive approach: fetch all and filter by user id / winner id
-      // A robust app would have specific endpoints for /profile/listings and /profile/won
-      const res = await get('/listings/');
-      const allListings = res.listings;
-      
-      setListings(allListings.filter(l => l.user_id === user.id));
-      setWonListings(allListings.filter(l => l.winner_id === user.id));
+      const [myRes, wonRes] = await Promise.all([get('/listings/my'), get('/listings/won')]);
+      setMyListings(myRes);
+      setWonListings(wonRes);
     } catch (err) {
-      showToast(err.toString(), "error");
+      showToast(err.toString(), 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [user.id]);
+  useEffect(() => { fetchData(); }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+    if (!window.confirm('Delete this listing permanently?')) return;
     try {
       await del(`/listings/${id}`);
-      showToast("Listing deleted", "success");
-      fetchData();
+      showToast('Listing deleted', 'success');
+      setMyListings(prev => prev.filter(l => l.id !== id));
     } catch (err) {
-      showToast(err.toString(), "error");
+      showToast(err.toString(), 'error');
     }
   };
 
   const handleClose = async (id) => {
-    if (!window.confirm("Are you sure you want to close this auction?")) return;
+    if (!window.confirm('Close this auction early?')) return;
     try {
       await post(`/listings/${id}/close`);
-      showToast("Auction closed", "success");
+      showToast('Auction closed', 'success');
       fetchData();
     } catch (err) {
-      showToast(err.toString(), "error");
+      showToast(err.toString(), 'error');
     }
   };
 
   return (
-    <div className="container" style={{ padding: '40px 20px' }}>
-      <h1 className="page-title" style={{ marginBottom: '30px' }}>My Activity</h1>
-      
-      <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--border-glass)', marginBottom: '30px' }}>
-        <button 
-          onClick={() => setActiveTab('my-listings')}
-          style={{ 
-            background: 'none', border: 'none', padding: '15px 20px', fontSize: '1.1rem',
-            color: activeTab === 'my-listings' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            borderBottom: activeTab === 'my-listings' ? '2px solid var(--accent)' : '2px solid transparent',
-            fontWeight: activeTab === 'my-listings' ? 'bold' : 'normal'
-          }}
-        >
-          My Listings ({listings.length})
+    <div className="container page-body">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+        <div>
+          <div className="section-label" style={{ marginBottom: 4 }}>Dashboard</div>
+          <h1 className="page-title">My Activity</h1>
+        </div>
+        <Link to="/create" className="btn btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Listing
+        </Link>
+      </div>
+
+      <div className="tabs">
+        <button className={`tab-btn${tab === 'my' ? ' active' : ''}`} onClick={() => setTab('my')}>
+          My Listings ({myListings.length})
         </button>
-        <button 
-          onClick={() => setActiveTab('won')}
-          style={{ 
-            background: 'none', border: 'none', padding: '15px 20px', fontSize: '1.1rem',
-            color: activeTab === 'won' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            borderBottom: activeTab === 'won' ? '2px solid var(--accent)' : '2px solid transparent',
-            fontWeight: activeTab === 'won' ? 'bold' : 'normal'
-          }}
-        >
+        <button className={`tab-btn${tab === 'won' ? ' active' : ''}`} onClick={() => setTab('won')}>
           Won Auctions ({wonListings.length})
         </button>
       </div>
-      
+
       {loading ? (
-        <div className="flex-center" style={{ height: '200px' }}><Spinner large /></div>
-      ) : activeTab === 'my-listings' ? (
-        listings.length > 0 ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}><Spinner large /></div>
+      ) : tab === 'my' ? (
+        myListings.length > 0 ? (
           <div className="grid-cards">
-            {listings.map(l => (
-              <div key={l.id} style={{ position: 'relative' }}>
+            {myListings.map(l => (
+              <div key={l.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <ListingCard listing={l} />
-                <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                <div style={{ display: 'flex', gap: 8 }}>
                   {l.auction_active === 1 && l.time_left_seconds > 0 && (
-                    <button onClick={() => handleClose(l.id)} className="btn-secondary" style={{ flex: 1 }}>Close Early</button>
+                    <button onClick={() => handleClose(l.id)} className="btn btn-secondary btn-sm" style={{ flex: 1 }}>
+                      Close Early
+                    </button>
                   )}
-                  <button onClick={() => handleDelete(l.id)} className="btn-danger" style={{ flex: 1 }}>Delete</button>
+                  <button onClick={() => handleDelete(l.id)} className="btn btn-danger btn-sm" style={{ flex: 1 }}>
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
-            <p>You haven't created any listings yet.</p>
+          <div className="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <h3>No listings yet</h3>
+            <p>Create your first auction listing.</p>
+            <Link to="/create" className="btn btn-primary" style={{ marginTop: 16 }}>Create Listing</Link>
           </div>
         )
       ) : (
         wonListings.length > 0 ? (
           <div className="grid-cards">
-            {wonListings.map(l => (
-              <ListingCard key={l.id} listing={l} />
-            ))}
+            {wonListings.map(l => <ListingCard key={l.id} listing={l} />)}
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
-            <p>You haven't won any auctions yet.</p>
+          <div className="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <h3>No auctions won yet</h3>
+            <p>Start bidding to win your first auction!</p>
           </div>
         )
       )}

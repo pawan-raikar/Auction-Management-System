@@ -9,7 +9,7 @@ const ProtectedRoute = ({ adminOnly = false }) => {
   const { showToast } = useContext(ToastContext);
 
   if (loading) {
-    return <div className="flex-center" style={{ height: '100vh' }}><Spinner large /></div>;
+    return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh' }}><Spinner large /></div>;
   }
 
   if (!user) {

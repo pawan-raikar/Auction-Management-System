@@ -1,74 +1,41 @@
-const BASE_URL = 'http://localhost:5000/api';
+export const API_BASE = 'http://localhost:5003/api';
+export const MEDIA_BASE = 'http://localhost:5003/media/images';
 
-const handleResponse = async (response) => {
-  if (response.status === 401) {
+const handleResponse = async (res) => {
+  if (res.status === 401) {
     localStorage.removeItem('ae_token');
     window.location.href = '/login';
-    return Promise.reject(new Error("Unauthorized"));
+    return Promise.reject(new Error('Unauthorized'));
   }
-  
-  const data = await response.json().catch(() => ({}));
-  
-  if (!response.ok) {
-    return Promise.reject(data.error || "An error occurred");
-  }
-  
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return Promise.reject(data.error || 'An error occurred');
   return data;
 };
 
-const getHeaders = () => {
+const headers = () => {
   const token = localStorage.getItem('ae_token');
   return {
     'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
+    ...(token && { Authorization: `Bearer ${token}` }),
   };
 };
 
-export const get = async (endpoint) => {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'GET',
-    headers: getHeaders()
-  });
-  return handleResponse(res);
-};
-
-export const post = async (endpoint, body) => {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(body)
-  });
-  return handleResponse(res);
-};
-
-export const put = async (endpoint, body) => {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'PUT',
-    headers: getHeaders(),
-    body: JSON.stringify(body)
-  });
-  return handleResponse(res);
-};
-
-export const del = async (endpoint) => {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'DELETE',
-    headers: getHeaders()
-  });
-  return handleResponse(res);
-};
-
-export const postForm = async (endpoint, formData, isPut = false) => {
+const authHeader = () => {
   const token = localStorage.getItem('ae_token');
-  const headers = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: isPut ? 'PUT' : 'POST',
-    headers,
-    body: formData
-  });
-  return handleResponse(res);
+  return token ? { Authorization: `Bearer ${token}` } : {};
 };
+
+export const get = (ep) =>
+  fetch(`${API_BASE}${ep}`, { method: 'GET', headers: headers() }).then(handleResponse);
+
+export const post = (ep, body) =>
+  fetch(`${API_BASE}${ep}`, { method: 'POST', headers: headers(), body: JSON.stringify(body) }).then(handleResponse);
+
+export const put = (ep, body) =>
+  fetch(`${API_BASE}${ep}`, { method: 'PUT', headers: headers(), body: JSON.stringify(body) }).then(handleResponse);
+
+export const del = (ep) =>
+  fetch(`${API_BASE}${ep}`, { method: 'DELETE', headers: headers() }).then(handleResponse);
+
+export const postForm = (ep, formData, isPut = false) =>
+  fetch(`${API_BASE}${ep}`, { method: isPut ? 'PUT' : 'POST', headers: authHeader(), body: formData }).then(handleResponse);
